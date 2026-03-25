@@ -60,12 +60,12 @@ export default function AdminLogin() {
 
           <div>
             <label className="block text-[10px] tracking-[0.15em] font-bold text-[#A8A29E] uppercase mb-2 ml-1">Admin Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-[#F9F7F2] border border-[#E5E0D8] rounded-2xl focus:outline-none focus:ring-1 focus:ring-[#B45309] focus:border-[#B45309] transition-all" required />
+            <input suppressHydrationWarning type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-5 py-3.5 bg-[#F9F7F2] border border-[#E5E0D8] rounded-2xl focus:outline-none focus:ring-1 focus:ring-[#B45309] focus:border-[#B45309] transition-all" required />
           </div>
 
           <div>
             <label className="block text-[10px] tracking-[0.15em] font-bold text-[#A8A29E] uppercase mb-2 ml-1">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-[#F9F7F2] border border-[#E5E0D8] rounded-2xl focus:outline-none focus:ring-1 focus:ring-[#B45309] focus:border-[#B45309] transition-all" required />
+            <input suppressHydrationWarning type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-5 py-3.5 bg-[#F9F7F2] border border-[#E5E0D8] rounded-2xl focus:outline-none focus:ring-1 focus:ring-[#B45309] focus:border-[#B45309] transition-all" required />
           </div>
 
           <button type="submit" disabled={loading} className="w-full group flex justify-between items-center px-6 py-4 bg-[#292524] hover:bg-[#1C1917] text-[#F9F7F2] text-xs uppercase tracking-widest font-bold rounded-2xl transition-all disabled:opacity-50 mt-4">
