@@ -23,10 +23,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${cormorant.variable}`}>
-      <body className={`font-sans bg-[#F9F7F2] text-[#292524] min-h-screen flex flex-col antialiased selection:bg-[#E2D2B0]/50 cursor-none`}>
+      <body className={`font-sans bg-[#F9F7F2] text-[#292524] min-h-screen flex flex-col antialiased selection:bg-[#E2D2B0]/50 cursor-none relative overflow-x-hidden`}>
+        <div className="noise-overlay" />
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 flex justify-center items-center pointer-events-none">
+          <div className="fluid-bg" />
+        </div>
+        
         <CustomCursor />
         <Navbar />
-        <main className="flex-1 flex flex-col relative z-10 w-full overflow-x-hidden pt-28">
+        <main className="flex-1 flex flex-col relative z-10 w-full overflow-x-hidden">
           {children}
         </main>
       </body>

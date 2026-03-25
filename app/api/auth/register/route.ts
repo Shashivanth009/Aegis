@@ -9,8 +9,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (!['ADMIN', 'EXAMINER', 'STUDENT'].includes(role)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    if (!['EXAMINER', 'STUDENT'].includes(role)) {
+      return NextResponse.json({ error: 'Invalid role. Only EXAMINER and STUDENT can self-register.' }, { status: 400 });
     }
 
     // Use Service Role to bypass RLS and create user with auto-confirm

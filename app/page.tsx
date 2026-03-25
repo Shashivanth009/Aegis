@@ -81,23 +81,17 @@ export default function Home() {
   
   // Parallax transforms
   const yHero = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
-  const yCards = useTransform(scrollYProgress, [0, 1], ["0%", "-20%"]);
+  const yCards = useTransform(scrollYProgress, [0, 1], ["0%", "-10%"]);
   const scaleImage = useTransform(scrollYProgress, [0, 0.5], [1, 1.1]);
   const opacityHero = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-[#F9F7F2] font-sans text-[#292524] relative overflow-x-hidden selection:bg-[#E2D2B0]/50">
-      <div className="noise-overlay" />
+    <div ref={containerRef} className="min-h-screen relative selection:bg-[#E2D2B0]/50 pt-32">
       
-      {/* Absolute fluid gradient layer */}
-      <div className="absolute top-0 left-0 w-full h-[150vh] overflow-hidden z-0 flex justify-center items-center pointer-events-none">
-        <div className="fluid-bg" />
-      </div>
-
       {/* Hero Section */}
       <motion.section 
         style={{ y: yHero, opacity: opacityHero }}
-        className="relative flex flex-col items-center justify-center min-h-screen px-4 text-center z-10 -mt-20"
+        className="relative flex flex-col items-center justify-center min-h-[80vh] px-4 text-center z-10"
       >
         <motion.div 
           initial={{ scale: 0.8, opacity: 0, rotate: -10 }}
@@ -127,7 +121,7 @@ export default function Home() {
           transition={{ duration: 2, delay: 1, ease: "easeOut" }}
           className="text-lg sm:text-2xl text-[#78716C] max-w-3xl mx-auto mb-20 font-light tracking-wide leading-relaxed"
         >
-          The death of fragile cryptography. We fuse Multimodal Vision AI with unbreakable asymmetric mathematical proofs to permanently secure academic records.
+          Unbreakable mathematical proofs fused with Multimodal Vision AI. Aegis permanently secures the integrity of academic records against all forms of structural and digital forgery.
         </motion.p>
         
         <motion.div
@@ -135,13 +129,12 @@ export default function Home() {
            animate={{ opacity: 1, y: 0 }}
            transition={{ duration: 1, delay: 1.5 }}
         >
-          <MagneticButton href="/auth">Initialize Engine</MagneticButton>
+          <MagneticButton href="/auth">Initialize Protocol</MagneticButton>
         </motion.div>
       </motion.section>
 
       {/* Immense Parallax Cinematic Section */}
-      <section className="relative z-20 bg-[#1C1917] text-[#F9F7F2] py-40 overflow-hidden">
-        {/* Dark theme noise overlay just for this section */}
+      <section className="relative z-20 bg-[#1C1917] text-[#F9F7F2] py-40 overflow-hidden mt-40 rounded-t-[5rem]">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%220 0 400 400%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E')] opacity-10 mix-blend-screen pointer-events-none" />
         
         <div className="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
@@ -156,95 +149,87 @@ export default function Home() {
               Paper is <span className="italic text-[#E2D2B0]">obsolete.</span>
             </h3>
             <p className="text-[#A8A29E] text-xl font-light leading-relaxed mb-8">
-              For decades, verifying an identity required blindly trusting a printed piece of paper or a stamped seal that can be easily forged. 
+              Verification traditionally relied on blind trust in printed seals—physical relics that are trivial to forge in a digital era.
             </p>
             <p className="text-[#A8A29E] text-xl font-light leading-relaxed">
-              Aegis changes the geometry of trust. We reduce thousands of hours of manual verification down to a <strong className="text-white font-medium">three-second cryptographic scan</strong> that mathematically proves undeniable authenticity.
+              Aegis reduces manual labor to a <strong className="text-white font-medium">three-second scan</strong>. We don't just "check" documents; we prove their mathematical existence at the point of origin.
             </p>
           </motion.div>
 
           <motion.div 
             style={{ scale: scaleImage }}
-            initial={{ opacity: 0, filter: "blur(20px)" }}
-            whileInView={{ opacity: 1, filter: "blur(0px)" }}
-            viewport={{ once: true, margin: "-200px" }}
-            transition={{ duration: 2, ease: "easeOut" }}
             className="w-full aspect-[4/5] bg-gradient-to-br from-[#292524] to-[#1C1917] rounded-[3rem] border border-[#3E3832] p-12 flex flex-col justify-between shadow-2xl overflow-hidden relative"
           >
              <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#B45309] rounded-full blur-[100px] opacity-20 pointer-events-none" />
-             
-             {/* The new Crypto Hash Stream animation filling the void */}
              <HashStream />
-
              <Shield className="w-16 h-16 text-[#E2D2B0] stroke-[1] mb-8 relative z-10" />
-             <div className="relative z-10 mix-blend-screen shadow-2xl p-4 -mx-4 bg-[#1C1917]/50 backdrop-blur-md rounded-2xl border border-white/5">
-               <div className="font-serif text-3xl text-white mb-2">RSA-2048 PSS</div>
-               <div className="text-[#A8A29E] font-mono text-sm">ASYMMETRIC SIGNATURE VERIFICATION</div>
+             <div className="relative z-10 mix-blend-screen shadow-2xl p-6 bg-[#1C1917]/50 backdrop-blur-md rounded-2xl border border-white/10">
+               <div className="font-serif text-3xl text-white mb-2 tracking-tight">RSA-2048 PSS</div>
+               <div className="text-[#A8A29E] font-mono text-sm tracking-widest">ASYMMETRIC MATHEMATICAL PROOF</div>
              </div>
           </motion.div>
         </div>
       </section>
 
-      {/* The Protocol Steps with Parallax Staggering */}
-      <section className="relative z-30 max-w-7xl mx-auto px-4 md:px-8 py-40">
-        <div className="text-center mb-32">
-          <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-[#A8A29E] mb-8">The Protocol</h2>
-          <h3 className="font-serif text-5xl md:text-7xl font-medium text-[#1C1917] tracking-tight">
-            How we <em className="italic text-[#B45309]">forge truth.</em>
-          </h3>
+      {/* Increased Info: The Cryptographic Core */}
+      <section className="bg-white py-40 relative z-20">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="flex flex-col md:flex-row gap-20 items-center">
+             <div className="flex-1 space-y-12">
+                <h2 className="text-[10px] uppercase tracking-[0.4em] font-bold text-[#A8A29E]">The Architecture</h2>
+                <h3 className="font-serif text-5xl md:text-6xl font-medium text-[#1C1917] tracking-tight leading-tight">
+                  Three layers of <br/><span className="italic text-[#B45309]">cryptographic defense.</span>
+                </h3>
+                
+                <div className="space-y-8">
+                   <div className="flex gap-6 items-start">
+                      <div className="text-2xl font-serif italic text-[#B45309] mt-1">01</div>
+                      <div>
+                        <h4 className="font-bold text-sm uppercase tracking-widest mb-2">Forensic Vision Layer</h4>
+                        <p className="text-[#78716C] font-light leading-relaxed">Gemini 1.5 Flash scrutinizes sub-pixel patterns, emblems, and layout grids to detect structural anomalies impossible for the human eye to find.</p>
+                      </div>
+                   </div>
+                   <div className="flex gap-6 items-start">
+                      <div className="text-2xl font-serif italic text-[#B45309] mt-1">02</div>
+                      <div>
+                        <h4 className="font-bold text-sm uppercase tracking-widest mb-2">Digestive Immutability</h4>
+                        <p className="text-[#78716C] font-light leading-relaxed">Each validated document is distilled into a SHA-256 hash. Any modification—even a single bit change—invalidates the entire cryptographic chain.</p>
+                      </div>
+                   </div>
+                   <div className="flex gap-6 items-start">
+                      <div className="text-2xl font-serif italic text-[#B45309] mt-1">03</div>
+                      <div>
+                        <h4 className="font-bold text-sm uppercase tracking-widest mb-2">Asymmetric Sealing</h4>
+                        <p className="text-[#78716C] font-light leading-relaxed">The final record is bound using an RSA Private Key. Verification is performable by anyone with the Public Key, but forgery is mathematically impossible.</p>
+                      </div>
+                   </div>
+                </div>
+             </div>
+             <div className="flex-1 w-full bg-[#F9F7F2] rounded-[3rem] p-12 aspect-square flex flex-col justify-center items-center shadow-inner border border-[#E5E0D8] relative overflow-hidden group">
+                <div className="absolute inset-0 opacity-5 group-hover:opacity-10 transition-opacity duration-1000">
+                   <div className="grid grid-cols-8 gap-4 p-8">
+                      {Array.from({length: 64}).map((_, i) => <div key={i} className="aspect-square bg-[#292524] rounded-sm" />)}
+                   </div>
+                </div>
+                <div className="text-center relative z-10">
+                   <ScanLine className="w-24 h-24 text-[#B45309] mx-auto mb-8 stroke-[0.5]" />
+                   <div className="font-serif text-3xl font-medium mb-4">AEGIS-CORE-v1</div>
+                   <div className="text-xs font-bold tracking-[0.2em] text-[#A8A29E] uppercase">ACTIVE ENGINE STATE: SECURE</div>
+                </div>
+             </div>
+          </div>
         </div>
-
-        <motion.div style={{ y: yCards }} className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
-          
-          {[
-            {
-              icon: Eye,
-              title: "Vision Analysis",
-              desc: "Documents are analyzed by Gemini 1.5. It scrutinizes formatting, watermarks, and structural validity exactly like a forensic examiner.",
-              delay: 0
-            },
-            {
-              icon: Shield,
-              title: "Cryptographic Lock",
-              desc: "Authentic documents are digested into a SHA-256 hash and structurally signed via 2048-bit RSA. Mathematically impenetrable.",
-              delay: 0.1
-            },
-            {
-              icon: ScanLine,
-              title: "Master Key Scan",
-              desc: "A singular Master QR Code is bound to the student. Scanning it instantly evaluates the mathematical proofs in real-time.",
-              delay: 0.2
-            }
-          ].map((item, idx) => (
-            <motion.div 
-              key={idx}
-              initial={{ opacity: 0, y: 60 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 1.2, delay: item.delay, ease: [0.16, 1, 0.3, 1] }}
-              className="group cursor-default"
-            >
-              <div className="paper-card rounded-[2.5rem] p-12 h-full flex flex-col transition-all duration-700 hover:-translate-y-4 hover:shadow-2xl hover:shadow-[#D4C5B0]/40">
-                <div className="w-16 h-16 bg-[#F9F7F2] rounded-full flex items-center justify-center mb-10 transition-transform duration-700 group-hover:scale-110 group-hover:bg-[#1C1917]">
-                  <item.icon className="w-8 h-8 text-[#B45309] stroke-[1] group-hover:text-[#E2D2B0] transition-colors duration-700" />
-                </div>
-                <h4 className="font-serif text-3xl font-medium mb-6 text-[#1C1917]">{item.title}</h4>
-                <p className="text-[#78716C] leading-relaxed font-light text-lg">
-                  {item.desc}
-                </p>
-                <div className="mt-auto pt-8">
-                  <div className="w-full h-[1px] bg-[#E5E0D8] group-hover:bg-[#1C1917] transition-colors duration-700 max-w-[50%]" />
-                </div>
-              </div>
-            </motion.div>
-          ))}
-
-        </motion.div>
       </section>
 
-      {/* Footer minimal */}
-      <footer className="bg-[#1C1917] text-[#A8A29E] py-12 text-center text-sm font-light">
-        <p className="tracking-widest uppercase text-[10px]">Aegis Cryptographic Systems © 2026</p>
+      {/* Unified Footer */}
+      <footer className="bg-[#1C1917] text-[#A8A29E] py-40 text-center relative z-20 rounded-t-[5rem]">
+        <div className="max-w-7xl mx-auto px-4">
+          <ShieldCheck className="w-16 h-16 text-[#B45309] mx-auto mb-10 opacity-80" />
+          <h2 className="font-serif text-4xl text-white mb-8">Securing the next billion certificates.</h2>
+          <div className="w-24 h-px bg-[#3E3832] mx-auto mb-12" />
+          <p className="tracking-widest uppercase text-[10px] font-bold mb-4">Aegis Cryptographic Systems</p>
+          <p className="text-xs font-light text-[#57534E]">Designed for the era of unbreakable trust. © 2026</p>
+        </div>
       </footer>
 
     </div>
