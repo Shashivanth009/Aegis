@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { ShieldCheck, Eye, Shield, ScanLine, ArrowRight } from 'lucide-react';
@@ -57,9 +57,16 @@ const RevealText = ({ text, delayOffset = 0 }: { text: string; delayOffset?: num
 
 // Animated scrolling stream of cryptographic hashes
 const HashStream = () => {
-  const hashes = Array.from({ length: 15 }, () => 
-    Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
-  );
+  const [hashes, setHashes] = useState<string[]>([]);
+
+  useEffect(() => {
+    const generatedHashes = Array.from({ length: 15 }, () => 
+      Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+    );
+    setHashes(generatedHashes);
+  }, []);
+
+  if (hashes.length === 0) return null;
 
   return (
     <div className="absolute inset-x-0 inset-y-12 z-0 overflow-hidden opacity-30 mask-image-vertical flex flex-col gap-6 py-4 pointer-events-none">
