@@ -23,11 +23,11 @@ export default function ScannerHome() {
     try {
       // Create a URL object to extract pathname safely
       const url = new URL(matchText);
-      // Ensure it's a valid Aegis QR code
+      // Ensure it's a valid Aageis QR code
       if (url.pathname.startsWith('/verify/student/')) {
         router.push(url.pathname);
       } else {
-        alert("Invalid QR Code: Not an Aegis Student Code.");
+        alert("Invalid QR Code: Not an Aageis Student Code.");
         setScanning(true);
         setLoadingRoute(false);
       }
@@ -57,7 +57,7 @@ export default function ScannerHome() {
         
         <h1 className="font-serif text-4xl sm:text-5xl font-medium text-[#1C1917] mb-4 tracking-tight">Examiner Terminal</h1>
         <p className="text-[#78716C] font-light leading-relaxed mb-12">
-          Your device is authorized to decrypt Aegis Master QRs. Position the candidate's cryptographic key within the frame.
+          Your device is authorized to decrypt Aageis Master QRs. Position the candidate's cryptographic key within the frame.
         </p>
 
         {loadingRoute ? (

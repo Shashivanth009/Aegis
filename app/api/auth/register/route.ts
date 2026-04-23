@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { adminAuth, adminDb } from '@/lib/firebase/server';
 
 export async function POST(req: Request) {
   try {
@@ -13,32 +13,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid role. Only EXAMINER and STUDENT can self-register.' }, { status: 400 });
     }
 
-    // Use Service Role to bypass RLS and create user with auto-confirm
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    // Create user in Firebase Auth
+    const userRecord = await adminAuth.createUser({
       email,
       password,
-      email_confirm: true,
-      user_metadata: { role }
+      emailVerified: true,
     });
 
-    if (authError) throw authError;
+    // Assign role in Firestore
+    await adminDb.collection('user_roles').doc(userRecord.uid).set({
+      role: role,
+    });
 
-    // Immediately assign role in user_roles
-    const { error: roleError } = await supabaseAdmin
-      .from('user_roles')
-      .insert({
-        user_id: authData.user.id,
-        role: role
-      });
-
-    if (roleError) throw roleError;
-
-    return NextResponse.json({ message: 'User created successfully', user: authData.user });
+    return NextResponse.json({ message: 'User created successfully', user: { uid: userRecord.uid, email: userRecord.email } });
   } catch (err: any) {
     console.error('Registration Error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

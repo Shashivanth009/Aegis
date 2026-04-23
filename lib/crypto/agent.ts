@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { adminDb } from '@/lib/firebase/server';
 
 interface VerificationAttempt {
   ip: string;
@@ -19,15 +19,14 @@ export async function analyzeAndLog(attempt: VerificationAttempt): Promise<{
   suspicious: boolean;
   reason?: string;
 }> {
-  const supabase = createSupabaseServerClient();
-
   // Log to audit_logs
-  await supabase.from('audit_logs').insert({
+  await adminDb.collection('audit_logs').add({
     student_id: attempt.studentId,
     action: attempt.action,
     actor_ip: attempt.ip,
     actor_user_id: attempt.userId ?? null,
     details: attempt.details ?? {},
+    created_at: new Date().toISOString(),
   });
 
   // Only analyze failed attempts for suspicious behavior
@@ -36,16 +35,17 @@ export async function analyzeAndLog(attempt: VerificationAttempt): Promise<{
   }
 
   const since = new Date(Date.now() - WINDOW_MS).toISOString();
-  const { count } = await supabase
-    .from('audit_logs')
-    .select('*', { count: 'exact', head: true })
-    .eq('actor_ip', attempt.ip)
-    .eq('action', 'FAILED_VERIFY')
-    .gte('created_at', since);
+  const snapshot = await adminDb.collection('audit_logs')
+    .where('actor_ip', '==', attempt.ip)
+    .where('action', '==', 'FAILED_VERIFY')
+    .where('created_at', '>=', since)
+    .get();
 
-  if ((count ?? 0) >= SUSPICIOUS_THRESHOLD) {
+  const count = snapshot.size;
+
+  if (count >= SUSPICIOUS_THRESHOLD) {
     // Log the suspicious event
-    await supabase.from('audit_logs').insert({
+    await adminDb.collection('audit_logs').add({
       student_id: attempt.studentId,
       action: 'SUSPICIOUS',
       actor_ip: attempt.ip,
@@ -54,6 +54,7 @@ export async function analyzeAndLog(attempt: VerificationAttempt): Promise<{
         count,
         window: '1 hour',
       },
+      created_at: new Date().toISOString(),
     });
 
     return {

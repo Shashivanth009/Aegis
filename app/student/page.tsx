@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { ShieldCheck, CheckCircle2, FileWarning, QrCode, GraduationCap, Loader2 } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, FileWarning, QrCode, GraduationCap, Loader2, Download } from 'lucide-react';
 import Image from 'next/image';
+import { generateBrandedQRCard } from '@/lib/qr-card';
 
 const REQUIRED_DOCS = ['AADHAAR', 'SSC_MEMO', 'HALLTICKET'];
 const DOC_LABELS: Record<string, string> = {
@@ -28,8 +28,7 @@ export default function StudentPortal() {
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
-  
-  const supabase = createSupabaseBrowserClient();
+  const [downloadingCard, setDownloadingCard] = useState(false);
 
   const loadData = async () => {
     try {
@@ -40,13 +39,23 @@ export default function StudentPortal() {
         const s = data.students[0];
         setStudent(s);
         
-        const { data: d } = await supabase.from('student_documents').select('*').eq('student_id', s.id);
-        if (d) setDocuments(d);
+        // Fetch documents via API
+        let currentDocs: any[] = [];
+        const docsRes = await fetch(`/api/students/${s.id}/documents`);
+        if (docsRes.ok) {
+          const docsData = await docsRes.json();
+          if (docsData.documents) {
+             currentDocs = docsData.documents;
+             setDocuments(currentDocs);
+          }
+        }
 
-        if (d && d.length === REQUIRED_DOCS.length) {
+        if (currentDocs.length >= REQUIRED_DOCS.length) {
           const qrRes = await fetch(`/api/students/${s.id}/qr`);
-          const { dataUrl } = await qrRes.json();
-          setQrCode(dataUrl);
+          if (qrRes.ok) {
+            const { dataUrl } = await qrRes.json();
+            setQrCode(dataUrl);
+          }
         }
       }
     } catch (err) {
@@ -172,12 +181,24 @@ export default function StudentPortal() {
           <div className="space-y-6">
             <h2 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#A8A29E] border-b border-[#E5E0D8] pb-4">Required Cryptographic Proofs</h2>
             
-            {error && (
-              <div className="paper-card p-4 border border-[#FCA5A5] bg-[#FEF2F2] flex gap-3 text-sm text-[#991B1B] rounded-2xl items-start shadow-xl">
-                <FileWarning className="w-5 h-5 flex-shrink-0 mt-0.5 text-[#DC2626]" />
-                <p className="leading-relaxed">{error}</p>
+            {student.status !== 'CLEARED' ? (
+              <div className="paper-card p-10 rounded-3xl text-center border-2 border-dashed border-[#D4C5B0] bg-[#EBE6DF]">
+                <ShieldCheck className="w-12 h-12 text-[#A8A29E] mx-auto mb-4 stroke-[1.5]" />
+                <h3 className="font-serif text-2xl font-medium text-[#57534E] mb-2 text-[#292524]">{student.status === 'REJECTED' ? 'Identity Rejected' : 'Awaiting Administrator Approval'}</h3>
+                <p className="text-[#78716C] font-light text-sm max-w-sm mx-auto leading-relaxed">
+                  {student.status === 'REJECTED' 
+                    ? 'Your identity initialization request was rejected by an administrator. Upload access is denied.' 
+                    : 'Your identity initialization must be mathematically verified and approved by a Tier-1 administrator before you can synthesize cryptographic document proofs.'}
+                </p>
               </div>
-            )}
+            ) : (
+              <>
+                {error && (
+                  <div className="paper-card p-4 border border-[#FCA5A5] bg-[#FEF2F2] flex gap-3 text-sm text-[#991B1B] rounded-2xl items-start shadow-xl">
+                    <FileWarning className="w-5 h-5 flex-shrink-0 mt-0.5 text-[#DC2626]" />
+                    <p className="leading-relaxed">{error}</p>
+                  </div>
+                )}
 
             {REQUIRED_DOCS.map(docType => {
               const uploadedDoc = documents.find(d => d.document_type === docType);
@@ -189,7 +210,7 @@ export default function StudentPortal() {
                       <h3 className="font-serif text-xl md:text-2xl font-medium text-[#292524] mb-2">{DOC_LABELS[docType]}</h3>
                       {uploadedDoc ? (
                         <div className="text-[10px] text-[#059669] flex items-center gap-2 font-bold tracking-widest uppercase">
-                          <CheckCircle2 className="w-4 h-4" /> Secured by AEGIS
+                          <CheckCircle2 className="w-4 h-4" /> Secured by AAGEIS
                         </div>
                       ) : (
                         <div className="text-[10px] text-[#A8A29E] font-bold tracking-widest uppercase">
@@ -223,12 +244,14 @@ export default function StudentPortal() {
                   
                   {uploadedDoc?.ai_validation_log && (
                     <div className="mt-5 pt-5 border-t border-[#E5E0D8] text-xs text-[#78716C] font-light italic leading-relaxed">
-                      " {uploadedDoc.ai_validation_log} " <br/><strong className="font-bold text-[10px] uppercase tracking-widest text-[#B45309] block mt-2">GEMINI VISION AI STATUS</strong>
+                      &quot; {uploadedDoc.ai_validation_log} &quot; <br/><strong className="font-bold text-[10px] uppercase tracking-widest text-[#B45309] block mt-2">GEMINI VISION AI STATUS</strong>
                     </div>
                   )}
                 </div>
               );
             })}
+              </>
+            )}
           </div>
         </motion.div>
 
@@ -252,9 +275,32 @@ export default function StudentPortal() {
                 <p className="text-center text-sm text-[#78716C] font-light leading-relaxed mb-8">
                   Present this mathematically secure key to the Examiner at the entrance. Your identity is impenetrable.
                 </p>
-                <a href={qrCode} download={`AEGIS-${student.roll_number}-QR.png`} className="w-full block text-center py-4 bg-[#B45309] hover:bg-[#92400E] text-[#F9F7F2] text-xs uppercase font-bold tracking-widest rounded-2xl transition-colors shadow-lg">
-                  Persist Key Locally
-                </a>
+                <button
+                  disabled={downloadingCard}
+                  onClick={async () => {
+                    setDownloadingCard(true);
+                    try {
+                      const cardDataUrl = await generateBrandedQRCard(
+                        qrCode,
+                        student.full_name,
+                        student.roll_number,
+                        student.exam_name
+                      );
+                      const link = document.createElement('a');
+                      link.href = cardDataUrl;
+                      link.download = `AAGEIS-${student.roll_number}-Certificate.png`;
+                      link.click();
+                    } catch (err) {
+                      console.error('Card generation failed:', err);
+                    } finally {
+                      setDownloadingCard(false);
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-4 bg-[#B45309] hover:bg-[#92400E] text-[#F9F7F2] text-xs uppercase font-bold tracking-widest rounded-2xl transition-colors shadow-lg disabled:opacity-50"
+                >
+                  {downloadingCard ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {downloadingCard ? 'Generating Card...' : 'Download Certificate Card'}
+                </button>
               </div>
             ) : (
               <div className="p-10 rounded-[2.5rem] flex flex-col items-center justify-center text-center opacity-70 border-2 border-dashed border-[#D4C5B0] bg-[#F9F7F2]">

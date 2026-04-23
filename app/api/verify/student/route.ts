@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { analyzeAndLog } from '@/lib/crypto/agent';
-import crypto from 'crypto';
+import { adminDb } from '@/lib/firebase/server';
+import { verifyAdminSession } from '@/lib/auth/admin_secure';
 
 export async function GET(req: Request) {
   try {
@@ -14,53 +13,55 @@ export async function GET(req: Request) {
 
     // 1. Authenticate caller
     const cookieStore = await cookies();
-    const authClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { cookies: { getAll() { return cookieStore.getAll() }, setAll() {} } }
-    );
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized Access. Please login as Examiner.' }, { status: 401 });
-
-    // Initialize Service Role Client (for Examiner access or full verification)
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { cookies: { getAll() { return [] }, setAll() {} } }
-    );
+    const sessionUid = cookieStore.get('aageis_session')?.value;
+    const isAdmin = await verifyAdminSession();
+    
+    if (!sessionUid && !isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized Access. Please login as Examiner or Admin.' }, { status: 401 });
+    }
 
     // Fetch Student
-    const { data: student, error: studentError } = await supabase
-      .from('students')
-      .select('*')
-      .eq('id', studentId)
-      .single();
-
-    if (studentError || !student) {
+    const studentDoc = await adminDb.collection('students').doc(studentId).get();
+    if (!studentDoc.exists) {
       return NextResponse.json({ status: 'INVALID', reason: 'Student profile not found or forged.' }, { status: 404 });
     }
+    const student = { id: studentDoc.id, ...studentDoc.data() };
 
     // Fetch Documents
-    const { data: documents } = await supabase
-      .from('student_documents')
-      .select('*')
-      .eq('student_id', studentId);
+    const docsSnapshot = await adminDb.collection('student_documents')
+      .where('student_id', '==', studentId)
+      .get();
+    
+    const documents = docsSnapshot.docs.map(d => d.data());
 
-    if (!documents || documents.length === 0) {
-      return NextResponse.json({ status: 'INVALID', reason: 'Student has no secured documents.' });
+
+
+    if (documents.length === 0) {
+      // No documents yet — show appropriate status based on student approval
+      const noDocStatus = (student as any).status === 'CLEARED' ? 'PENDING_DOCS' : 
+                          (student as any).status === 'REJECTED' ? 'REVOKED' : 'PENDING';
+      return NextResponse.json({ 
+        status: noDocStatus, 
+        reason: 'Student has no secured documents uploaded yet.',
+        student: {
+          id: (student as any).id,
+          full_name: (student as any).full_name,
+          roll_number: (student as any).roll_number,
+          exam_name: (student as any).exam_name,
+          status: (student as any).status
+        },
+        checklist: [],
+        isAdmin
+      });
     }
 
-    // Instead of doing full signature re-validation locally (which is slow),
-    // we verified it mathematically on upload. We verify DB state here.
-    // To make it cryptographically solid, we verify the RSA-PSS signature over the hash dynamically right now.
-    
+    // Cryptographic verification
+    const { verifySignature } = await import('@/lib/crypto/signing');
+
     let allValid = true;
     let failingDocument = '';
 
-    const { verifySignature } = await import('@/lib/crypto/signing');
-
     const checklist = documents.map(doc => {
-      // Live cryptographic check
       const sigValid = verifySignature(doc.hash, doc.signature);
       if (!sigValid) {
         allValid = false;
@@ -77,41 +78,52 @@ export async function GET(req: Request) {
     });
 
     if (!allValid) {
-      await analyzeAndLog({
-        ip,
-        studentId,
+      await adminDb.collection('audit_logs').add({
+        student_id: studentId,
         action: 'FAILED_VERIFY',
-        details: { reason: `Cryptographic failure on ${failingDocument}` }
+        actor_ip: ip,
+        details: { reason: `Cryptographic failure on ${failingDocument}` },
+        created_at: new Date().toISOString(),
       });
       return NextResponse.json({
         status: 'INVALID',
         reason: `${failingDocument} digital signature failed verification. TAMPERING DETECTED.`,
-        student: { full_name: student.full_name, roll_number: student.roll_number },
-        checklist
+        student: { 
+          full_name: (student as any).full_name, 
+          roll_number: (student as any).roll_number,
+          status: (student as any).status
+        },
+        checklist,
+        isAdmin
       });
     }
 
-    // Determine final status
-    const status = student.status === 'REJECTED' ? 'REVOKED' : 'VALID';
+    // Determine final status based on student approval + crypto verification
+    const studentStatus = (student as any).status;
+    const status = studentStatus === 'REJECTED' ? 'REVOKED' : 
+                   studentStatus === 'PENDING' ? 'PENDING' : 'VALID';
 
     // Log the successful verification scan
-    await supabase.from('audit_logs').insert({
+    await adminDb.collection('audit_logs').add({
       student_id: studentId,
       action: 'VERIFIED_SCAN',
       actor_ip: ip,
-      details: { checklist_length: checklist.length }
+      details: { checklist_length: checklist.length },
+      created_at: new Date().toISOString(),
     });
 
     return NextResponse.json({
       status,
       student: {
-        id: student.id,
-        full_name: student.full_name,
-        roll_number: student.roll_number,
-        exam_name: student.exam_name,
-        created_at: student.created_at
+        id: (student as any).id,
+        full_name: (student as any).full_name,
+        roll_number: (student as any).roll_number,
+        exam_name: (student as any).exam_name,
+        created_at: (student as any).created_at,
+        status: (student as any).status
       },
-      checklist
+      checklist,
+      isAdmin
     });
   } catch (err: any) {
     console.error('Verify error:', err);

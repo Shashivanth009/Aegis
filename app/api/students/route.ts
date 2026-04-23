@@ -1,23 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { adminAuth, adminDb } from '@/lib/firebase/server';
+import { verifyAdminSession } from '@/lib/auth/admin_secure';
 
 export async function POST(req: Request) {
   try {
+    // Auth: check Firebase session cookie
     const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll(cookiesToSet) { /* Ignore for API */ }
-        }
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const sessionUid = cookieStore.get('aageis_session')?.value;
+    if (!sessionUid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,25 +19,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Insert student
-    const { data: student, error } = await supabase
-      .from('students')
-      .insert({
-        user_id: user.id,
-        full_name,
-        roll_number,
-        exam_name
-      })
-      .select()
-      .single();
-
-    if (error) {
-      // Handle unique constraint on roll_number
-      if (error.code === '23505') {
-        return NextResponse.json({ error: 'A student with this roll number already exists' }, { status: 409 });
-      }
-      throw error;
+    // Check if roll_number already exists
+    const existing = await adminDb.collection('students')
+      .where('roll_number', '==', roll_number)
+      .limit(1)
+      .get();
+    
+    if (!existing.empty) {
+      return NextResponse.json({ error: 'A student with this roll number already exists' }, { status: 409 });
     }
+
+    // Insert student
+    const studentRef = adminDb.collection('students').doc();
+    const student = {
+      id: studentRef.id,
+      user_id: sessionUid,
+      full_name,
+      roll_number,
+      exam_name,
+      status: 'PENDING',
+      created_at: new Date().toISOString(),
+    };
+    await studentRef.set(student);
 
     return NextResponse.json({ student });
   } catch (err: any) {
@@ -55,37 +49,41 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() }, setAll() {} } }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  // Check role
-  const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', user.id).single();
-  const role = roleData?.role || 'STUDENT';
-
-  let studentsData;
+  export async function GET(req: Request) {
+    try {
+      const cookieStore = await cookies();
+      const isAdmin = cookieStore.get('aageis_admin_session')?.value === process.env.ADMIN_SESSION_SECRET;
+      const sessionUid = cookieStore.get('aageis_session')?.value;
+      const { searchParams } = new URL(req.url);
+      const queryAll = searchParams.get('query') === 'all';
   
-  if (role === 'ADMIN' || role === 'EXAMINER') {
-    // Admins and Examiners need to see all students. Bypass RLS.
-    const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { cookies: { getAll() { return [] }, setAll() {} } }
-    );
-    const { data } = await supabaseAdmin.from('students').select('*').order('created_at', { ascending: false });
-    studentsData = data;
-  } else {
-    // Normal student only sees their own profile
-    const { data } = await supabase.from('students').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-    studentsData = data;
-  }
+      if (!sessionUid && !isAdmin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  
+      let studentsData: any[] = [];
+  
+      if (isAdmin && queryAll) {
+      // Admin: fetch all students
+      const snapshot = await adminDb.collection('students').orderBy('created_at', 'desc').get();
+      studentsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    } else if (sessionUid) {
+      // Check role
+      const roleDoc = await adminDb.collection('user_roles').doc(sessionUid).get();
+      const role = roleDoc.exists ? roleDoc.data()?.role : 'STUDENT';
 
-  return NextResponse.json({ students: studentsData });
+      if ((role === 'ADMIN' || role === 'EXAMINER') && queryAll) {
+        const snapshot = await adminDb.collection('students').orderBy('created_at', 'desc').get();
+        studentsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      } else {
+        const snapshot = await adminDb.collection('students')
+          .where('user_id', '==', sessionUid)
+          .get();
+        studentsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        studentsData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+    }
+
+    return NextResponse.json({ students: studentsData });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }

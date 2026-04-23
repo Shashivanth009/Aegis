@@ -3,6 +3,7 @@ import { Inter, Cormorant_Garamond } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
+import { AuthProvider } from '@/lib/firebase/auth-context';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const cormorant = Cormorant_Garamond({ 
@@ -12,7 +13,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: 'AEGIS | Verified Trust',
+  title: 'AAGEIS',
   description: 'Unforgeable cryptographic student certificates.',
 };
 
@@ -29,11 +30,13 @@ export default function RootLayout({
           <div className="fluid-bg" />
         </div>
         
-        <CustomCursor />
-        <Navbar />
-        <main className="flex-1 flex flex-col relative z-10 w-full overflow-x-hidden">
-          {children}
-        </main>
+        <AuthProvider>
+          <CustomCursor />
+          <Navbar />
+          <main className="flex-1 flex flex-col relative z-10 w-full overflow-x-hidden pt-24">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

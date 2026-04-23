@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { auth } from '@/lib/firebase/client';
 import { Loader2, ArrowLeft, Trash2, CalendarDays, FileText, UserSquare2, ShieldCheck, Hash, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import QRCodeDisplay from '@/components/QRCodeDisplay';
@@ -26,16 +26,17 @@ export default function CertificateDetail() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState(false);
-  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     async function fetchDetail() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const idToken = await user.getIdToken();
 
       // detail
       const res = await fetch(`/api/certificates/${params.id}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        headers: { 'Authorization': `Bearer ${idToken}` },
       });
       if (!res.ok) {
         router.push('/dashboard');
@@ -46,7 +47,7 @@ export default function CertificateDetail() {
 
       // fetch QR
       const qrRes = await fetch(`/api/certificates/${params.id}/qr`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        headers: { 'Authorization': `Bearer ${idToken}` },
       });
       if (qrRes.ok) {
         const qrData = await qrRes.json();
@@ -55,16 +56,17 @@ export default function CertificateDetail() {
       setLoading(false);
     }
     fetchDetail();
-  }, [params.id, router, supabase.auth]);
+  }, [params.id, router]);
 
   const handleRevoke = async () => {
     if (!confirm('Are you absolutely sure you want to revoke this certificate? This action cannot be undone and scans will show as REVOKED immediately.')) return;
     
     setRevoking(true);
-    const { data: { session } } = await supabase.auth.getSession();
+    const user = auth.currentUser;
+    const idToken = await user?.getIdToken();
     const res = await fetch(`/api/certificates/${params.id}/revoke`, {
       method: 'PATCH',
-      headers: { 'Authorization': `Bearer ${session?.access_token}` },
+      headers: { 'Authorization': `Bearer ${idToken}` },
     });
     if (res.ok) {
       setCert(prev => prev ? { ...prev, status: 'REVOKED' } : null);

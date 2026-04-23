@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase/client';
 import { motion } from 'framer-motion';
 import { GraduationCap, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -12,7 +14,6 @@ export default function StudentAuth() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const supabase = createSupabaseBrowserClient();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,14 +22,22 @@ export default function StudentAuth() {
 
     try {
       if (isLogin) {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) throw signInError;
+        const cred = await signInWithEmailAndPassword(auth, email, password);
 
-        const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', data.user.id).single();
-        if (roleData?.role !== 'STUDENT') {
-          await supabase.auth.signOut();
+        // Check role
+        const roleDoc = await getDoc(doc(db, 'user_roles', cred.user.uid));
+        if (!roleDoc.exists() || roleDoc.data().role !== 'STUDENT') {
+          await auth.signOut();
           throw new Error('Access Denied. This portal is for Students only.');
         }
+
+        // Set session cookie
+        const idToken = await cred.user.getIdToken();
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken })
+        });
 
         window.location.href = '/student';
       } else {
@@ -40,7 +49,15 @@ export default function StudentAuth() {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Registration failed');
 
-        await supabase.auth.signInWithPassword({ email, password });
+        // Auto-login after registration
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const idToken = await cred.user.getIdToken();
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken })
+        });
+
         window.location.href = '/student';
       }
     } catch (err: any) {

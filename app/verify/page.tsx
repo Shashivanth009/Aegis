@@ -160,7 +160,7 @@ function VerifyContent() {
         )}
 
         <div className="mt-12 text-center text-sm text-slate-400 pt-6 border-t border-slate-100">
-          <p>Secured by <strong>AEGIS</strong> Autonomus Cryptographic Engine.</p>
+          <p>Secured by <strong>AAGEIS</strong> Autonomus Cryptographic Engine.</p>
         </div>
       </div>
     </div>

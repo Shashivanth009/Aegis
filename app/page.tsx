@@ -93,7 +93,7 @@ export default function Home() {
   const opacityHero = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
 
   return (
-    <div ref={containerRef} className="min-h-screen relative selection:bg-[#E2D2B0]/50 pt-32">
+    <div ref={containerRef} className="min-h-screen relative selection:bg-[#E2D2B0]/50 pt-8">
       
       {/* Hero Section */}
       <motion.section 
@@ -110,7 +110,7 @@ export default function Home() {
         </motion.div>
 
         <h1 className="font-serif text-[5rem] sm:text-[8rem] md:text-[10rem] lg:text-[12rem] font-medium tracking-tighter mb-6 leading-[0.85] text-[#1C1917]">
-          <RevealText text="Aegis." />
+          <RevealText text="Aageis." />
         </h1>
         
         <motion.h2 
@@ -128,7 +128,7 @@ export default function Home() {
           transition={{ duration: 2, delay: 1, ease: "easeOut" }}
           className="text-lg sm:text-2xl text-[#78716C] max-w-3xl mx-auto mb-20 font-light tracking-wide leading-relaxed"
         >
-          Unbreakable mathematical proofs fused with Multimodal Vision AI. Aegis permanently secures the integrity of academic records against all forms of structural and digital forgery.
+          Unbreakable mathematical proofs fused with Multimodal Vision AI. Aageis permanently secures the integrity of academic records against all forms of structural and digital forgery.
         </motion.p>
         
         <motion.div
@@ -159,7 +159,7 @@ export default function Home() {
               Verification traditionally relied on blind trust in printed seals—physical relics that are trivial to forge in a digital era.
             </p>
             <p className="text-[#A8A29E] text-xl font-light leading-relaxed">
-              Aegis reduces manual labor to a <strong className="text-white font-medium">three-second scan</strong>. We don't just "check" documents; we prove their mathematical existence at the point of origin.
+              Aageis reduces manual labor to a <strong className="text-white font-medium">three-second scan</strong>. We don't just "check" documents; we prove their mathematical existence at the point of origin.
             </p>
           </motion.div>
 
@@ -220,7 +220,7 @@ export default function Home() {
                 </div>
                 <div className="text-center relative z-10">
                    <ScanLine className="w-24 h-24 text-[#B45309] mx-auto mb-8 stroke-[0.5]" />
-                   <div className="font-serif text-3xl font-medium mb-4">AEGIS-CORE-v1</div>
+                   <div className="font-serif text-3xl font-medium mb-4">AAGEIS-CORE-v1</div>
                    <div className="text-xs font-bold tracking-[0.2em] text-[#A8A29E] uppercase">ACTIVE ENGINE STATE: SECURE</div>
                 </div>
              </div>
@@ -234,7 +234,7 @@ export default function Home() {
           <ShieldCheck className="w-16 h-16 text-[#B45309] mx-auto mb-10 opacity-80" />
           <h2 className="font-serif text-4xl text-white mb-8">Securing the next billion certificates.</h2>
           <div className="w-24 h-px bg-[#3E3832] mx-auto mb-12" />
-          <p className="tracking-widest uppercase text-[10px] font-bold mb-4">Aegis Cryptographic Systems</p>
+          <p className="tracking-widest uppercase text-[10px] font-bold mb-4">Aageis Cryptographic Systems</p>
           <p className="text-xs font-light text-[#57534E]">Designed for the era of unbreakable trust. © 2026</p>
         </div>
       </footer>

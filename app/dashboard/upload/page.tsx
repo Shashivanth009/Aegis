@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { auth } from '@/lib/firebase/client';
 import { UploadCloud, File, ShieldCheck, Loader2 } from 'lucide-react';
 import QRCodeDisplay from '@/components/QRCodeDisplay';
 
@@ -19,7 +19,6 @@ export default function UploadPage() {
   const [certId, setCertId] = useState<string | null>(null);
 
   const router = useRouter();
-  const supabase = createSupabaseBrowserClient();
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +28,10 @@ export default function UploadPage() {
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+
+      const idToken = await user.getIdToken();
 
       const formData = new FormData();
       formData.append('file', file);
@@ -40,7 +41,7 @@ export default function UploadPage() {
       const res = await fetch('/api/certificates', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${idToken}`
         },
         body: formData,
       });
@@ -72,7 +73,7 @@ export default function UploadPage() {
           
           <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Certificate Secured</h2>
           <p className="text-slate-600 mb-8 max-w-sm mx-auto">
-            The document has been cryptographically signed and secured on AEGIS.
+            The document has been cryptographically signed and secured on AAGEIS.
           </p>
 
           <div className="bg-white p-6 rounded-2xl shadow-sm inline-block mb-8 border border-slate-100">

@@ -60,7 +60,28 @@ export default function VerifyStudent() {
     );
   }
 
-  const { student, checklist, status } = result;
+  const { student, checklist, status, isAdmin } = result;
+
+  if (!student) {
+    return null;
+  }
+
+  const handleUpdateStatus = async (newStatus: string) => {
+    try {
+      const res = await fetch(`/api/admin/students/${student.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert('Failed to update authorization status');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F9F7F2] py-20 px-4 sm:px-6">
@@ -70,9 +91,10 @@ export default function VerifyStudent() {
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#1C1917] text-[#F9F7F2] w-full text-center py-3 rounded-2xl mb-12 text-xs uppercase tracking-[0.2em] font-bold shadow-2xl"
+          className="bg-[#1C1917] text-[#F9F7F2] w-full text-center py-3 rounded-2xl mb-12 text-xs uppercase tracking-[0.2em] font-bold shadow-2xl flex items-center justify-center gap-2"
         >
-          Examiner Authorization Terminal
+          {isAdmin ? <ShieldAlert className="w-4 h-4 text-[#B45309]" /> : null}
+          {isAdmin ? 'Admin Authorization Terminal' : 'Examiner Verification Terminal'}
         </motion.div>
 
         {/* Status Header */}
@@ -80,11 +102,15 @@ export default function VerifyStudent() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className={`paper-card rounded-3xl p-10 text-center mb-8 border-t-8 ${status === 'VALID' ? 'border-t-[#059669]' : 'border-t-[#DC2626]'}`}
+          className={`paper-card rounded-3xl p-10 text-center mb-8 border-t-8 ${status === 'VALID' ? 'border-t-[#059669]' : status === 'PENDING' || status === 'PENDING_DOCS' ? 'border-t-[#B45309]' : 'border-t-[#DC2626]'}`}
         >
           {status === 'VALID' ? (
             <div className="w-20 h-20 bg-[#D1FAE5] rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="w-10 h-10 text-[#059669]" />
+            </div>
+          ) : status === 'PENDING' || status === 'PENDING_DOCS' ? (
+            <div className="w-20 h-20 bg-[#FEF3C7] rounded-full flex items-center justify-center mx-auto mb-6">
+              <ShieldAlert className="w-10 h-10 text-[#B45309]" />
             </div>
           ) : (
             <div className="w-20 h-20 bg-[#FEE2E2] rounded-full flex items-center justify-center mx-auto mb-6">
@@ -92,10 +118,19 @@ export default function VerifyStudent() {
             </div>
           )}
           
-          <h2 className={`font-serif text-4xl sm:text-5xl font-medium mb-2 ${status === 'VALID' ? 'text-[#065F46]' : 'text-[#991B1B]'}`}>
-            {status === 'VALID' ? 'CLEARED FOR ENTRY' : 'REJECTED: FORGERY'}
+          <h2 className={`font-serif text-4xl sm:text-5xl font-medium mb-2 ${status === 'VALID' ? 'text-[#065F46]' : status === 'PENDING' || status === 'PENDING_DOCS' ? 'text-[#92400E]' : 'text-[#991B1B]'}`}>
+            {status === 'VALID' ? 'CLEARED FOR ENTRY' : 
+             status === 'PENDING' ? 'PENDING APPROVAL' : 
+             status === 'PENDING_DOCS' ? 'DOCUMENTS PENDING' :
+             status === 'REVOKED' ? 'ENTRY REVOKED' : 'VERIFICATION FAILED'}
           </h2>
-          <p className="text-[#78716C] font-light">Mathmatically verified exactly as issued by the governing body.</p>
+          <p className="text-[#78716C] font-light">
+            {status === 'VALID' ? 'Mathematically verified exactly as issued by the governing body.' :
+             status === 'PENDING' ? 'This student is awaiting administrator approval.' :
+             status === 'PENDING_DOCS' ? 'Student is approved but has not uploaded required documents yet.' :
+             status === 'REVOKED' ? 'This student\'s entry authorization has been revoked by an administrator.' :
+             'Cryptographic verification has failed. Documents may have been tampered with.'}
+          </p>
         </motion.div>
 
         {/* Student Profile Card */}
@@ -105,7 +140,11 @@ export default function VerifyStudent() {
            transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
            className="mb-8"
         >
-          <div className="text-xs font-bold tracking-widest text-[#A8A29E] uppercase mb-4 pl-2">Candidate Profile</div>
+          <div className="flex justify-between items-end mb-4 px-2">
+            <div className="text-xs font-bold tracking-widest text-[#A8A29E] uppercase">Candidate Profile</div>
+            <div className="text-xs font-bold tracking-widest text-[#B45309] uppercase bg-[#EBE6DF] px-3 py-1 rounded-full">{student.status}</div>
+          </div>
+          
           <div className="paper-card rounded-2xl p-8 flex flex-col sm:flex-row justify-between sm:items-center">
             <div>
               <h3 className="font-serif text-3xl font-medium text-[#292524] mb-1">{student.full_name}</h3>
@@ -117,6 +156,38 @@ export default function VerifyStudent() {
             </div>
           </div>
         </motion.div>
+
+        {/* Admin Controls */}
+        {isAdmin && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-10 bg-[#EBE6DF] p-6 rounded-2xl border border-[#D4C5B0] flex flex-col sm:flex-row items-center justify-between gap-4"
+          >
+            <div>
+              <h4 className="font-serif text-lg font-medium text-[#1C1917]">Authorization Oversight</h4>
+              <p className="text-xs text-[#78716C] mt-1 tracking-wide">Permanently set the ledger clearance level for this candidate.</p>
+            </div>
+            <div className="flex gap-3 w-full sm:w-auto">
+              {student.status !== 'REJECTED' && (
+                <button 
+                  onClick={() => handleUpdateStatus('REJECTED')}
+                  className="flex-1 sm:flex-none px-6 py-3 bg-[#FEF2F2] hover:bg-[#FEE2E2] text-[#991B1B] border border-[#FCA5A5] rounded-xl text-xs font-bold tracking-widest uppercase transition-colors"
+                >
+                  Reject
+                </button>
+              )}
+              {student.status !== 'CLEARED' && (
+                <button 
+                  onClick={() => handleUpdateStatus('CLEARED')}
+                  className="flex-1 sm:flex-none px-6 py-3 bg-[#1C1917] hover:bg-[#292524] text-[#F9F7F2] rounded-xl text-xs font-bold tracking-widest uppercase transition-colors"
+                >
+                  Approve
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Cryptographic Checklist */}
         <motion.div

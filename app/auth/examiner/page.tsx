@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase/client';
 import { motion } from 'framer-motion';
 import { UserCircle, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -9,10 +11,9 @@ import Link from 'next/link';
 export default function ExaminerAuth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const supabase = createSupabaseBrowserClient();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,29 +21,25 @@ export default function ExaminerAuth() {
     setError(null);
 
     try {
-      if (isLogin) {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) throw signInError;
+      const cred = await signInWithEmailAndPassword(auth, email, password);
 
-        const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', data.user.id).single();
-        if (roleData?.role !== 'EXAMINER') {
-          await supabase.auth.signOut();
-          throw new Error('Access Denied. This portal is for Examiners only.');
-        }
-
-        window.location.href = '/scanner';
-      } else {
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, role: 'EXAMINER' })
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Registration failed');
-
-        await supabase.auth.signInWithPassword({ email, password });
-        window.location.href = '/scanner';
+      // Check role
+      const roleDoc = await getDoc(doc(db, 'user_roles', cred.user.uid));
+      if (!roleDoc.exists() || roleDoc.data().role !== 'EXAMINER') {
+        await auth.signOut();
+        throw new Error(`Access Denied. This portal is for Examiners only.`);
       }
+
+      // Set session cookie
+      const idToken = await cred.user.getIdToken();
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      });
+
+      const searchParams = new URLSearchParams(window.location.search);
+      window.location.href = searchParams.get('redirect') || '/scanner';
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -82,16 +79,13 @@ export default function ExaminerAuth() {
           </div>
 
           <button type="submit" disabled={loading} className="w-full group flex justify-between items-center px-6 py-4 bg-[#065F46] hover:bg-[#064E3B] text-[#F9F7F2] text-xs uppercase tracking-widest font-bold rounded-2xl transition-all disabled:opacity-50 mt-4">
-            <span>{isLogin ? 'Login as Examiner' : 'Register as Examiner'}</span>
+            <span>Login as Examiner</span>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
           </button>
         </form>
 
         <div className="mt-8 text-center text-sm font-light text-[#78716C]">
-          {isLogin ? "Need an examiner account? " : "Already registered? "}
-          <button onClick={() => { setIsLogin(!isLogin); setError(null); }} className="text-[#059669] hover:text-[#065F46] font-medium transition-colors border-b border-transparent hover:border-[#065F46]">
-            {isLogin ? 'Register here.' : 'Login here.'}
-          </button>
+          Only administrators can provision examiner terminals.
         </div>
       </motion.div>
     </div>

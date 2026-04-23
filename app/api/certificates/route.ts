@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuthToken, createSupabaseServerClient } from '@/lib/supabase/server';
+import { verifyAuthToken, adminDb } from '@/lib/firebase/server';
 import { generateHash } from '@/lib/crypto/hashing';
 import { signHash } from '@/lib/crypto/signing';
 import { validateFile } from '@/lib/crypto/validation';
@@ -9,8 +9,8 @@ import { generateQRCode } from '@/lib/qr';
 export async function POST(req: NextRequest) {
   try {
     // 1. Authenticate
-    const user = await verifyAuthToken(req.headers.get('Authorization'));
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const decoded = await verifyAuthToken(req.headers.get('Authorization'));
+    if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // 2. Parse multipart form
     const formData = await req.formData();
@@ -30,67 +30,41 @@ export async function POST(req: NextRequest) {
 
     // 4. Hash & sign
     const hash = generateHash(buffer);
-    const supabase = createSupabaseServerClient();
 
     // 5. Duplicate check
-    const { data: existing } = await supabase
-      .from('certificates')
-      .select('id')
-      .eq('hash', hash)
-      .single();
-    if (existing) return NextResponse.json({ error: 'This file has already been uploaded.' }, { status: 409 });
+    const existingCerts = await adminDb.collection('certificates').where('hash', '==', hash).limit(1).get();
+    if (!existingCerts.empty) return NextResponse.json({ error: 'This file has already been uploaded.' }, { status: 409 });
 
     const signature = signHash(hash);
     const certId = require('crypto').randomUUID();
 
-    // 6. Upload file to Supabase Storage (Bucket: 'certificates')
-    const fileExt = file.name.split('.').pop() || 'tmp';
-    const storagePath = `${user.id}/${certId}.${fileExt}`;
+    // 6. Store certificate in Firestore (proof-based, no file storage)
+    const cert = {
+      id: certId,
+      user_id: decoded.uid,
+      file_name: file.name,
+      file_url: '', // No file storage
+      hash,
+      signature,
+      status: 'VALID',
+      recipient_name: recipientName.trim(),
+      issued_by: issuedBy.trim(),
+      created_at: new Date().toISOString(),
+    };
 
-    const { error: storageError } = await supabase.storage
-      .from('certificates')
-      .upload(storagePath, buffer, {
-        contentType: file.type,
-      });
+    await adminDb.collection('certificates').doc(certId).set(cert);
 
-    if (storageError) throw new Error(`Storage error: ${storageError.message}`);
-
-    // Get the public URL for the uploaded file
-    const { data: publicUrlData } = supabase.storage
-      .from('certificates')
-      .getPublicUrl(storagePath);
-      
-    const fileUrl = publicUrlData.publicUrl;
-
-    // 7. Store certificate in Supabase
-    const { data: cert, error: dbError } = await supabase
-      .from('certificates')
-      .insert({
-        id: certId,
-        user_id: user.id,
-        file_name: file.name,
-        file_url: fileUrl,
-        hash,
-        signature,
-        status: 'VALID',
-        recipient_name: recipientName.trim(),
-        issued_by: issuedBy.trim(),
-      })
-      .select()
-      .single();
-
-    if (dbError || !cert) throw new Error(dbError?.message ?? 'Database error');
-
-    // 8. Generate HMAC verify token & QR
+    // 7. Generate HMAC verify token & QR
     const verifyToken = generateVerifyToken(cert.id);
     const qrDataUrl = await generateQRCode(verifyToken);
 
-    // 9. Log action
-    await supabase.from('audit_logs').insert({
+    // 8. Log action
+    await adminDb.collection('audit_logs').add({
       certificate_id: cert.id,
       action: 'UPLOADED',
-      actor_user_id: user.id,
+      actor_user_id: decoded.uid,
       actor_ip: req.headers.get('x-forwarded-for') ?? 'unknown',
+      created_at: new Date().toISOString(),
     });
 
     return NextResponse.json({ certificate: cert, qrDataUrl, verifyToken }, { status: 201 });
@@ -102,18 +76,28 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await verifyAuthToken(req.headers.get('Authorization'));
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const decoded = await verifyAuthToken(req.headers.get('Authorization'));
+    if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('certificates')
-      .select('id, file_name, recipient_name, issued_by, status, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const snapshot = await adminDb.collection('certificates')
+      .where('user_id', '==', decoded.uid)
+      .get();
 
-    if (error) throw error;
-    return NextResponse.json({ certificates: data });
+    const certificates = snapshot.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        file_name: data.file_name,
+        recipient_name: data.recipient_name,
+        issued_by: data.issued_by,
+        status: data.status,
+        created_at: data.created_at,
+      };
+    });
+
+    certificates.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return NextResponse.json({ certificates });
   } catch (err) {
     console.error('[GET /api/certificates]', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

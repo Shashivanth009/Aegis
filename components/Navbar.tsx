@@ -2,42 +2,15 @@
 
 import Link from 'next/link';
 import { ShieldCheck, LogOut, LayoutDashboard, ScanLine, GraduationCap } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { User } from '@supabase/supabase-js';
+import { useAuth } from '@/lib/firebase/auth-context';
 import { useRouter } from 'next/navigation';
 
 export default function Navbar() {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const supabase = createSupabaseBrowserClient();
+  const { user, role, signOut } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id).single();
-        setRole(data?.role || null);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id).single();
-        setRole(data?.role || null);
-      } else {
-        setRole(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase.auth]);
-
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setRole(null);
+    await signOut();
     router.push('/');
   };
 
@@ -57,7 +30,7 @@ export default function Navbar() {
         <div className="flex items-center">
           <Link href="/" className="flex items-center gap-3 group">
             <ShieldCheck className="w-5 h-5 text-[#B45309] group-hover:scale-110 transition-transform stroke-[1.5]" />
-            <span className="font-serif text-lg font-medium text-[#1C1917] tracking-widest">AEGIS</span>
+            <span className="font-serif text-lg font-medium text-[#1C1917] tracking-widest">AAGEIS</span>
           </Link>
         </div>
 
