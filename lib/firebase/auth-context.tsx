@@ -55,10 +55,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const handleSignOut = async () => {
+    // 1. Sign out of Firebase Client
     await firebaseSignOut(auth);
-    // Clear local admin session cookies
-    document.cookie = 'aageis_admin_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    document.cookie = 'aageis_admin_ui=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    
+    // 2. Clear secure server cookies via API
+    try {
+      await fetch('/api/auth/session', { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to clear server session:', err);
+    }
+
+    // 3. Reset local state
     setRole(null);
     setUser(null);
   };

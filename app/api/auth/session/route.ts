@@ -30,7 +30,15 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE() {
-  const cookie = serialize('aageis_session', '', {
+  const cookie1 = serialize('aageis_session', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
+  
+  const cookie2 = serialize('aageis_admin_session', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -38,7 +46,17 @@ export async function DELETE() {
     maxAge: 0,
   });
 
+  const cookie3 = serialize('aageis_admin_ui', '', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
+
   const response = NextResponse.json({ message: 'Session cleared' });
-  response.headers.append('Set-Cookie', cookie);
+  response.headers.append('Set-Cookie', cookie1);
+  response.headers.append('Set-Cookie', cookie2);
+  response.headers.append('Set-Cookie', cookie3);
   return response;
 }
